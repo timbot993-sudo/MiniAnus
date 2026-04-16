@@ -1,0 +1,26 @@
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "img"
+public_folder: "img"
+
+# Здесь мы настраиваем админку под твой черный стиль
+display_url: https://humur.netlify.app/admin/
+logo_url: https://i.imgur.com/8QZ6X9P.png
+
+collections:
+  - name: "projects"
+    label: "Проекты"
+    folder: "_projects"
+    create: true
+    extension: "json"
+    format: "json"
+    fields:
+      - label: "Название"
+        name: "name"
+        widget: "string"
+        hint: "Как назовем ролик?"
+      - { label: "Тип", name: "type", widget: "hidden", default: "video" }
+      - { label: "Выбрать видео", name: "link", widget: "file" }
+      - { label: "Описание", name: "desc", widget: "text", required: false }

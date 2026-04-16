@@ -1,0 +1,139 @@
+/* Основной фон и сетка */
+body {
+    background-color: #0f0f0f;
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+}
+
+.gallery { padding: 40px 20px; }
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+/* Карточки */
+.card {
+    background: #181818;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #303030;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.card:hover { border-color: #ff0000; transform: translateY(-5px); }
+.card video, .card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+/* Модальное окно */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.9);
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: #181818;
+    border: 1px solid #444;
+    border-radius: 15px;
+    overflow: hidden;
+    min-width: 300px; min-height: 200px;
+}
+
+.modal-container-inner {
+    width: 100%; height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+#modalMediaContainer {
+    flex-grow: 1;
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#modalMediaContainer img, #modalMediaContainer video {
+    max-width: 100%; max-height: 100%;
+}
+
+/* Инфо-панель внутри модалки */
+.modal-info-overlay {
+    padding: 15px;
+    background: #181818;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px; 
+    right: 15px;
+    font-size: 32px; 
+    font-weight: bold;
+    
+    /* Цвет: темно-серый для видимости на белом фоне */
+    color: #333333; 
+    cursor: pointer; 
+    z-index: 100; 
+    line-height: 1;
+    transition: color 0.2s, transform 0.2s;
+
+    /* Запрет выделения текста (Кроссбраузерно) */
+    -webkit-user-select: none;  /* Safari 3+, Safari on iOS 3+ */
+    -moz-user-select: none;     /* Firefox */
+    -ms-user-select: none;      /* IE 10+ / Edge */
+    user-select: none;          /* Стандарт */
+
+    /* Легкая белая обводка (спасет, если под крестиком будет темное фото) */
+    text-shadow: 
+        1px 1px 0 #fff, 
+       -1px -1px 0 #fff, 
+        1px -1px 0 #fff, 
+       -1px 1px 0 #fff;
+}
+
+.close-modal:hover {
+    color: #000000;
+    transform: scale(1.1);
+}
+.close-modal:hover {
+    color: #000000; /* При наведении становится полностью черным */
+    transform: scale(1.1); /* Немного увеличивается */
+}
+
+/* Если фон модалки внутри слишком темный, можно добавить белую обводку тексту */
+.close-modal {
+    text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+}
+
+/* Ресайзер (уголок, за который тянуть) */
+.modal-resizer-fancy {
+    width: 20px; height: 20px;
+    background: #ff0000;
+    position: absolute;
+    right: 0; bottom: 0;
+    cursor: nwse-resize;
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.admin-link {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background: #ff0000;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: bold;
+}

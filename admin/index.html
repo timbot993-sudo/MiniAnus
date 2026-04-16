@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Portfolio | HUMURKA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        body { background-color: #0f0f0f; color: white; font-family: sans-serif; overflow-x: hidden; }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .card {
+            background: #181818;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #303030;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+        }
+        .card:hover { border-color: #ff0000; transform: translateY(-5px); }
+
+        /* Кнопка удаления */
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(220, 38, 38, 0.8);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+            z-index: 10;
+            border: none;
+        }
+        .delete-btn:hover { background: rgba(255, 0, 0, 1); transform: scale(1.1); }
+
+        #universalModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+        }
+
+        #resizableModal {
+            position: absolute;
+            background: #181818;
+            border: 1px solid #303030;
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        #modalMediaContainer {
+            flex-grow: 1;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        #modalMediaContainer img, #modalMediaContainer video {
+            max-width: 100%; max-height: 100%; object-fit: contain;
+        }
+
+        .modal-resizer-fancy {
+            position: absolute;
+            right: 0; bottom: 0;
+            width: 25px; height: 25px;
+            cursor: nwse-resize;
+            background: linear-gradient(135deg, transparent 50%, #ff0000 50%);
+            z-index: 10;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px; right: 15px;
+            font-size: 24px; 
+            color: #000;
+            cursor: pointer; 
+            z-index: 100;
+            background: rgba(255,255,255,0.9);
+            width: 35px; height: 35px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+<div class="max-w-4xl mx-auto mt-6 px-4">
+    <a href="../index.html" class="inline-flex items-center gap-2 text-gray-400 hover:text-red-600 transition font-bold">
+        <i class="fas fa-arrow-left"></i> 
+        Вернуться на главную
+    </a>
+</div>
+    <div class="max-w-4xl mx-auto mt-10 p-6 bg-[#181818] rounded-2xl border border-[#303030] shadow-xl">
+        <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+            <i class="fas fa-plus-circle text-red-600"></i> Добавить в портфолио
+        </h2>
+        <form id="uploadForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-3">
+                <input type="text" id="vTitle" placeholder="Название работы" required 
+                    class="bg-[#121212] border border-[#303030] p-3 rounded-lg focus:outline-none focus:border-red-600">
+                <textarea id="vDesc" placeholder="Описание" 
+                    class="bg-[#121212] border border-[#303030] p-3 rounded-lg h-24 focus:outline-none focus:border-red-600"></textarea>
+            </div>
+            
+            <label class="border-2 border-dashed border-[#303030] p-6 rounded-xl text-center hover:border-red-600 cursor-pointer flex flex-col items-center justify-center">
+                <input type="file" id="vFile" accept="image/*,video/*" required class="hidden">
+                <i class="fas fa-file-upload text-3xl mb-2 text-gray-500"></i>
+                <p id="fileNameDisplay" class="text-sm text-gray-400">Выберите фото или видео</p>
+            </label>
+
+            <button type="submit" id="submitBtn" class="md:col-span-2 bg-red-600 py-3 rounded-lg font-bold hover:bg-red-700 transition">
+                Опубликовать
+            </button>
+        </form>
+        
+        <div id="progressContainer" class="hidden mt-4 w-full bg-gray-700 rounded-full h-2">
+            <div id="progressBar" class="bg-red-600 h-2 rounded-full w-0"></div>
+        </div>
+    </div>
+
+    <div class="grid-container mt-10" id="projectsGrid"></div>
+
+    <div id="universalModal">
+        <div id="resizableModal">
+            <span class="close-modal">&times;</span>
+            <div id="modalMediaContainer"></div>
+            <div class="p-4 bg-[#181818] border-t border-[#303030]">
+                <h3 id="modalTitle" class="text-xl font-bold"></h3>
+                <p id="modalDesc" class="text-gray-400 text-sm"></p>
+            </div>
+            <div class="modal-resizer-fancy"></div>
+        </div>
+    </div>
+
+<script>
+    // 1. БЕЗОПАСНАЯ АУТЕНТИФИКАЦИЯ
+    let authenticated = false;
+    
+    async function checkAuth() {
+        const password = prompt("Введите пароль для доступа к админке:");
+        
+        if (!password) {
+            alert("Отмено!");
+            window.location.href = "../index.html";
+            return false;
+        }
+
+        try {
+            const response = await fetch('/.netlify/functions/check-auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                authenticated = true;
+                return true;
+            } else {
+                alert("❌ Неверный пароль!");
+                window.location.href = "../index.html";
+                return false;
+            }
+        } catch (error) {
+            // Fallback для локального развития
+            alert("⚠️ Ошибка подключения к серверу. Используется локальная проверка.");
+            const localPasswordHash = "cb8fe563326bdb8fbaef11cbc94b02eec8a0da2b897baaf5ce50a46d244fab30"; // hash от "@yRp2u3H#"
+            const enteredHash = await hashPassword(password);
+            if (enteredHash === localPasswordHash) {
+                authenticated = true;
+                return true;
+            } else {
+                alert("❌ Неверный пароль!");
+                window.location.href = "../index.html";
+                return false;
+            }
+        }
+    }
+
+    // Функция для хеширования на клиенте (для fallback)
+    async function hashPassword(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Проверяем пароль при загрузке страницы
+    (async () => {
+        if (!await checkAuth()) {
+            throw new Error('Authentication failed');
+        }
+    })();
+
+    // 2. ДАННЫЕ И ИНИЦИАЛИЗАЦИЯ
+    let projects = [];
+    const grid = document.getElementById('projectsGrid');
+    const uploadForm = document.getElementById('uploadForm');
+    const storageKey = 'my_portfolio_data';
+
+    // Загрузка данных из файла при старте
+    async function loadData() {
+        try {
+            const resp = await fetch('../projects.json');
+            if (resp.ok) {
+                projects = await resp.json();
+            } else {
+                // Если файла нет, берем из браузера
+                projects = JSON.parse(localStorage.getItem(storageKey)) || [];
+            }
+            renderProjects();
+        } catch (e) {
+            projects = JSON.parse(localStorage.getItem(storageKey)) || [];
+            renderProjects();
+        }
+    }
+
+    // СИНХРОНИЗАЦИЯ (Файл на ноуте + Браузер)
+    async function syncAll() {
+        // Сохраняем в localStorage (на всякий случай)
+        localStorage.setItem(storageKey, JSON.stringify(projects));
+        
+        // Отправляем на сервер Node.js
+        try {
+            await fetch('http://localhost:3000/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(projects)
+            });
+            console.log("Данные записаны в projects.json на ноуте");
+        } catch (err) {
+            console.warn("Локальный сервер не запущен. Сохранено только в браузере.");
+        }
+    }
+
+    // ОТРИСОВКА
+    function renderProjects() {
+        grid.innerHTML = '';
+        if (projects.length === 0) {
+            grid.innerHTML = '<p class="text-center col-span-full text-gray-500">Тут пока пусто. Загрузи что-нибудь!</p>';
+            return;
+        }
+
+        projects.forEach((proj, index) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            const mediaTag = proj.type === 'video' 
+                ? `<video src="${proj.link}#t=0.1" muted playsinline class="w-full h-48 object-cover"></video>` 
+                : `<img src="${proj.link}" class="w-full h-48 object-cover">`;
+
+            card.innerHTML = `
+                <div class="relative">
+                    ${mediaTag}
+                    <button onclick="deleteProject(event, ${index})" class="delete-btn" title="Удалить">
+                        <i class="fas fa-trash-alt text-sm"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-bold truncate">${proj.name}</h3>
+                    <p class="text-gray-500 text-xs truncate">${proj.desc || ''}</p>
+                </div>
+            `;
+
+            if (proj.type === 'video') {
+                const v = card.querySelector('video');
+                card.onmouseenter = () => v.play();
+                card.onmouseleave = () => { v.pause(); v.currentTime = 0; };
+            }
+
+            card.onclick = (e) => {
+                if (!e.target.closest('.delete-btn')) openModal(proj);
+            };
+            grid.appendChild(card);
+        });
+    }
+
+    // УДАЛЕНИЕ
+    window.deleteProject = async function(event, index) {
+        event.stopPropagation();
+        if (confirm("Удалить эту работу?")) {
+            projects.splice(index, 1);
+            renderProjects();
+            await syncAll();
+        }
+    };
+
+    // ЗАГРУЗКА
+    uploadForm.onsubmit = (e) => {
+        e.preventDefault();
+        const file = document.getElementById('vFile').files[0];
+        const btn = document.getElementById('submitBtn');
+        const progress = document.getElementById('progressContainer');
+        const bar = document.getElementById('progressBar');
+
+        if (!file) return;
+
+        btn.disabled = true;
+        progress.classList.remove('hidden');
+        
+        let p = 0;
+        const interval = setInterval(() => {
+            p += 10;
+            bar.style.width = p + '%';
+            if (p >= 100) {
+                clearInterval(interval);
+                const reader = new FileReader();
+                reader.onload = async function(event) {
+                    projects.unshift({
+                        name: document.getElementById('vTitle').value,
+                        desc: document.getElementById('vDesc').value,
+                        type: file.type.includes('video') ? 'video' : 'image',
+                        link: event.target.result
+                    });
+                    
+                    await syncAll();
+                    renderProjects();
+                    
+                    uploadForm.reset();
+                    document.getElementById('fileNameDisplay').textContent = "Выберите фото или видео";
+                    btn.disabled = false;
+                    progress.classList.add('hidden');
+                    bar.style.width = '0%';
+                };
+                reader.readAsDataURL(file);
+            }
+        }, 30);
+    };
+
+    // МОДАЛКА И РЕСАЙЗ (Оставляем как было)
+    const modal = document.getElementById('universalModal');
+    const resizableModal = document.getElementById('resizableModal');
+    const mediaContainer = document.getElementById('modalMediaContainer');
+
+    function openModal(proj) {
+        mediaContainer.innerHTML = '';
+        document.getElementById('modalTitle').textContent = proj.name;
+        document.getElementById('modalDesc').textContent = proj.desc;
+        const media = proj.type === 'video' ? document.createElement('video') : document.createElement('img');
+        media.src = proj.link;
+        if(proj.type === 'video') { media.controls = true; media.autoplay = true; }
+        mediaContainer.appendChild(media);
+        modal.style.display = 'block';
+    }
+
+    function closeModal() { modal.style.display = 'none'; mediaContainer.innerHTML = ''; }
+    document.querySelector('.close-modal').onclick = closeModal;
+    window.onclick = (e) => { if (e.target == modal) closeModal(); };
+
+    document.getElementById('vFile').onchange = function() {
+        if(this.files[0]) document.getElementById('fileNameDisplay').textContent = "Файл выбран: " + this.files[0].name;
+    };
+
+    // СТАРТ
+    loadData();
+</script>
+</body>
+</html>

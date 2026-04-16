@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HUMURKA | Portfolio</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        body { background-color: #0f0f0f; color: white; font-family: sans-serif; }
+        
+        /* Сетка */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 20px; }
+        
+        /* Карточки */
+        .card { background: #181818; border-radius: 12px; overflow: hidden; border: 1px solid #303030; cursor: pointer; transition: 0.2s; position: relative; }
+        .card:hover { border-color: #ff0000; transform: translateY(-5px); }
+
+        /* Модалка */
+        .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); }
+        #resizableModal { 
+            position: absolute; background: #181818; border-radius: 12px; overflow: hidden;
+            display: flex; flex-direction: column; border: 1px solid #303030;
+        }
+        #modalMediaContainer { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
+        #modalMediaContainer img, #modalMediaContainer video { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        .modal-resizer-fancy { width: 20px; height: 20px; background: #ff0000; position: absolute; right: 0; bottom: 0; cursor: nwse-resize; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+        .close-modal { position: absolute; top: 15px; right: 15px; background: white; color: black; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header class="p-6 border-b border-[#303030] flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-red-600">HUMURKA.nety</h1>
+        <a href="admin/index.html" class="bg-[#303030] px-4 py-2 rounded-lg hover:bg-red-600 transition">Админка</a>
+    </header>
+
+    <main>
+        <div class="grid" id="projectsGrid"></div>
+    </main>
+
+    <div id="universalModal" class="modal">
+        <div id="resizableModal">
+            <span class="close-modal">&times;</span>
+            <div id="modalMediaContainer"></div>
+            <div class="p-4 bg-[#181818]">
+                <h3 id="modalTitle" class="text-xl font-bold"></h3>
+                <p id="modalDesc" class="text-gray-400 text-sm"></p>
+            </div>
+            <div class="modal-resizer-fancy"></div> 
+        </div>
+    </div>
+
+    <script>
+    // --- 1. НАСТРОЙКИ ПАМЯТИ ---
+    const STORAGE_KEY = 'my_portfolio_data'; 
+    let projects = [];
+
+    // --- 2. ЗАГРУЗКА ДАННЫХ ---
+    async function loadAllData() {
+        let localData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        let jsonData = [];
+
+        try {
+            const response = await fetch('./projects.json');
+            if (response.ok) {
+                jsonData = await response.json();
+            }
+        } catch (e) {
+            console.log("Данные загружаются из локального хранилища");
+        }
+
+        // Объединяем данные
+        projects = [...localData, ...jsonData];
+
+        // Убираем дубликаты
+        const unique = Array.from(new Set(projects.map(p => JSON.stringify(p)))).map(p => JSON.parse(p));
+        projects = unique;
+
+        renderGallery();
+    }
+
+    // --- 3. ОТРИСОВКА ГАЛЕРЕИ ---
+    function renderGallery() {
+        const grid = document.getElementById('projectsGrid');
+        grid.innerHTML = '';
+
+        if (projects.length === 0) {
+            grid.innerHTML = '<p class="text-gray-500 text-center col-span-full">Галерея пока пуста.</p>';
+            return;
+        }
+
+        projects.forEach((proj) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            const media = proj.type === 'video' 
+                ? `<video src="${proj.link}#t=0.1" muted loop playsinline class="w-full h-52 object-cover"></video>`
+                : `<img src="${proj.link}" loading="lazy" class="w-full h-52 object-cover">`;
+
+            card.innerHTML = `
+                <div class="relative">${media}</div>
+                <div class="p-4">
+                    <h4 class="font-bold truncate">${proj.name}</h4>
+                    <p class="text-xs text-gray-500 truncate">${proj.desc || ''}</p>
+                </div>
+            `;
+
+            // Видео-превью
+            if (proj.type === 'video') {
+                const v = card.querySelector('video');
+                card.onmouseenter = () => v.play();
+                card.onmouseleave = () => { v.pause(); v.currentTime = 0; };
+            }
+
+            card.onclick = () => openModal(proj);
+            grid.appendChild(card);
+        });
+    }
+
+    // --- 4. МОДАЛКА ---
+    const modal = document.getElementById('universalModal');
+    const resizableModal = document.getElementById('resizableModal');
+
+    function openModal(proj) {
+        const container = document.getElementById('modalMediaContainer');
+        container.innerHTML = '';
+        document.getElementById('modalTitle').textContent = proj.name;
+        document.getElementById('modalDesc').textContent = proj.desc || '';
+
+        if (proj.type === 'video') {
+            const v = document.createElement('video');
+            v.src = proj.link; v.controls = true; v.autoplay = true;
+            container.appendChild(v);
+        } else {
+            const img = document.createElement('img');
+            img.src = proj.link;
+            container.appendChild(img);
+        }
+
+        modal.style.display = 'block';
+        
+        // Центровка модалки
+        resizableModal.style.width = "700px";
+        resizableModal.style.height = "500px";
+        resizableModal.style.left = "50%";
+        resizableModal.style.top = "50%";
+        resizableModal.style.transform = "translate(-50%, -50%)";
+    }
+
+    document.querySelector('.close-modal').onclick = () => {
+        modal.style.display = 'none';
+        document.getElementById('modalMediaContainer').innerHTML = '';
+    };
+
+    // --- 5. РЕСАЙЗЕР ---
+    const resizer = document.querySelector('.modal-resizer-fancy');
+    resizer.onmousedown = (e) => {
+        e.preventDefault();
+        const rect = resizableModal.getBoundingClientRect();
+        resizableModal.style.transform = "none";
+        resizableModal.style.left = rect.left + "px";
+        resizableModal.style.top = rect.top + "px";
+
+        window.onmousemove = (e) => {
+            const w = e.clientX - rect.left;
+            const h = e.clientY - rect.top;
+            if (w > 300) resizableModal.style.width = w + 'px';
+            if (h > 200) resizableModal.style.height = h + 'px';
+        };
+        window.onmouseup = () => window.onmousemove = null;
+    };
+
+    window.onclick = (e) => { if (e.target == modal) modal.style.display = 'none'; };
+// Добавь эту функцию в скрипт админки
+function downloadJSON() {
+    const data = localStorage.getItem('my_portfolio_data');
+    if (!data) {
+        alert("Нет данных для сохранения!");
+        return;
+    }
+
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    a.href = url;
+    a.download = 'projects.json'; // Файл будет называться именно так
+    document.body.appendChild(a);
+    a.click();
+    
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// И добавь кнопку в HTML админки:
+// <button onclick="downloadJSON()" class="bg-green-600 p-2 rounded">Скачать JSON для сайта</button>
+    // Старт
+    loadAllData();
+    </script>
+</body>
+</html>
