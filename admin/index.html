@@ -155,47 +155,16 @@
     let authenticated = false;
     
     async function checkAuth() {
-        const password = prompt("Введите пароль для доступа к админке:");
-        
-        if (!password) {
-            alert("Отмено!");
-            window.location.href = "../index.html";
-            return false;
-        }
-
-        try {
-            const response = await fetch('/.netlify/functions/check-auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
-            });
-
-            const result = await response.json();
-            
-            if (result.success) {
-                authenticated = true;
-                return true;
-            } else {
-                alert("❌ Неверный пароль!");
-                window.location.href = "../index.html";
-                return false;
-            }
-        } catch (error) {
-            // Fallback для локального развития
-            alert("⚠️ Ошибка подключения к серверу. Используется локальная проверка.");
-            const localPasswordHash = "cb8fe563326bdb8fbaef11cbc94b02eec8a0da2b897baaf5ce50a46d244fab30"; // hash от "@yRp2u3H#"
-            const enteredHash = await hashPassword(password);
-            if (enteredHash === localPasswordHash) {
-                authenticated = true;
-                return true;
-            } else {
-                alert("❌ Неверный пароль!");
-                window.location.href = "../index.html";
-                return false;
-            }
-        }
+    const password = prompt("Введите пароль:");
+    if (password === "@yRp2u3H#") { 
+        authenticated = true;
+        return true;
+    } else {
+        alert("❌ Неверный пароль!");
+        window.location.href = "../index.html";
+        return false;
     }
-
+}
     // Функция для хеширования на клиенте (для fallback)
     async function hashPassword(password) {
         const encoder = new TextEncoder();
